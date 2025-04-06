@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine on
+  RewriteBase /ktra2php
+  
+  # Cho phép truy cập trực tiếp thư mục public
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_URI} !^/ktra2php/public/
+  
+  # Chuyển hướng tất cả các request khác đến public/index.php
+  RewriteRule ^(.*)$ public/index.php?url=$1 [QSA,L]
+  
+  # Nếu file/thư mục tồn tại trong public
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^(.*)$ public/$1 [L]
+</IfModule> 

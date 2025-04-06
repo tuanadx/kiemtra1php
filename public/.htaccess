@@ -1,0 +1,18 @@
+<IfModule mod_rewrite.c>
+  Options -Multiviews
+  RewriteEngine On
+  RewriteBase /hehehe/nhanam-clone/public
+  
+  # Cho phép truy cập trực tiếp thư mục css, js, images và uploads
+  RewriteCond %{REQUEST_URI} !^/hehehe/nhanam-clone/public/css/
+  RewriteCond %{REQUEST_URI} !^/hehehe/nhanam-clone/public/js/
+  RewriteCond %{REQUEST_URI} !^/hehehe/nhanam-clone/public/images/
+  RewriteCond %{REQUEST_URI} !^/hehehe/nhanam-clone/public/uploads/
+  
+  # Các điều kiện khác - nếu không phải là file hoặc thư mục
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-f
+  
+  # Chuyển hướng các request khác đến index.php
+  RewriteRule ^(.+)$ index.php?url=$1 [QSA,L]
+</IfModule> 
