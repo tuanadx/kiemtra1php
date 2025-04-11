@@ -83,11 +83,36 @@
 
                 <div class="order-total">
                     <div class="total-line">
-                        <span class="total-label">Tổng tiền:</span>
+                        <span class="total-label">Tạm tính:</span>
                         <span class="total-amount"><?php echo formatCurrency($data['cart']->tong_tien); ?></span>
                     </div>
+                    <div class="total-line">
+                        <span class="total-label">VAT (10%):</span>
+                        <span class="total-amount"><?php echo formatCurrency($data['vat']); ?></span>
+                    </div>
+                    <div class="total-line">
+                        <span class="total-label">Phí vận chuyển:</span>
+                        <span class="total-amount">
+                            <?php if($data['shipping'] > 0) : ?>
+                                <?php echo formatCurrency($data['shipping']); ?>
+                            <?php else : ?>
+                                <span class="free-shipping">Miễn phí</span>
+                            <?php endif; ?>
+                        </span>
+                    </div>
+                    <?php if($data['shipping'] > 0) : ?>
+                    <div class="shipping-note">
+                        <i class="fas fa-info-circle"></i>
+                        Mua thêm <?php echo formatCurrency($data['free_shipping_threshold'] - $data['cart']->tong_tien); ?> để được miễn phí vận chuyển
+                    </div>
+                    <?php endif; ?>
+                    <div class="total-line grand-total">
+                        <span class="total-label">Tổng cộng:</span>
+                        <span class="total-amount"><?php echo formatCurrency($data['orderTotal']); ?></span>
+                    </div>
                     <p class="vat-note">Đã bao gồm VAT (nếu có)</p>
-                    <button class="checkout-btn">Thanh toán</button>
+                    <button class="checkout-btn" id="checkout-btn">Thanh toán</button>
+                    <button class="save-cart-btn" id="save-cart-btn">Lưu giỏ hàng</button>
                 </div>
             </div>
 
@@ -95,5 +120,153 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Xử lý tăng giảm số lượng
+        const decreaseBtns = document.querySelectorAll('.decrease');
+        const increaseBtns = document.querySelectorAll('.increase');
+        const quantityInputs = document.querySelectorAll('.quantity-input');
+        
+        // Xử lý khi nhấn nút giảm
+        decreaseBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const input = this.parentElement.querySelector('.quantity-input');
+                let value = parseInt(input.value);
+                
+                if(value > 1) {
+                    value--;
+                    input.value = value;
+                    updateQuantity(input);
+                }
+            });
+        });
+        
+        // Xử lý khi nhấn nút tăng
+        increaseBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const input = this.parentElement.querySelector('.quantity-input');
+                let value = parseInt(input.value);
+                
+                value++;
+                input.value = value;
+                updateQuantity(input);
+            });
+        });
+        
+        // Xử lý khi thay đổi số lượng
+        quantityInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                let value = parseInt(this.value);
+                
+                if(isNaN(value) || value < 1) {
+                    value = 1;
+                    this.value = value;
+                }
+                
+                updateQuantity(this);
+            });
+        });
+        
+        // Hàm cập nhật số lượng
+        function updateQuantity(input) {
+            const cartDetailId = input.getAttribute('data-cart-detail-id');
+            const quantity = parseInt(input.value);
+            
+            fetch(`<?php echo URL_ROOT; ?>/carts/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `cart_detail_id=${cartDetailId}&quantity=${quantity}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    // Update all cart item totals with the new data
+                    data.cartItems.forEach(item => {
+                        const itemRow = document.querySelector(`tr[data-cart-detail-id="${item.id}"]`);
+                        if (itemRow) {
+                            const totalCell = itemRow.querySelector('.total');
+                            if (totalCell) {
+                                totalCell.textContent = jsFormatCurrency(item.thanh_tien);
+                            }
+                        }
+                    });
+                    
+                    // Cập nhật tổng tiền
+                    const subtotalAmount = document.querySelector('.total-line:first-child .total-amount');
+                    if (subtotalAmount) {
+                        subtotalAmount.textContent = jsFormatCurrency(data.cart.tong_tien);
+                    }
+                    
+                    // Cập nhật VAT
+                    const vatAmount = document.querySelector('.total-line:nth-child(2) .total-amount');
+                    if (vatAmount) {
+                        vatAmount.textContent = jsFormatCurrency(data.vat);
+                    }
+                    
+                    // Cập nhật phí vận chuyển
+                    const shippingAmount = document.querySelector('.total-line:nth-child(3) .total-amount');
+                    if (shippingAmount) {
+                        if(data.shipping > 0) {
+                            shippingAmount.innerHTML = jsFormatCurrency(data.shipping);
+                        } else {
+                            shippingAmount.innerHTML = '<span class="free-shipping">Miễn phí</span>';
+                        }
+                    }
+                    
+                    // Cập nhật tổng cộng
+                    const totalAmount = document.querySelector('.grand-total .total-amount');
+                    if (totalAmount) {
+                        totalAmount.textContent = jsFormatCurrency(data.orderTotal);
+                    }
+                    
+                    // Cập nhật số lượng sản phẩm trong giỏ hàng
+                    updateCartCount(data.count);
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+        
+        // Lưu giỏ hàng tạm thời
+        const saveCartBtn = document.getElementById('save-cart-btn');
+        if(saveCartBtn) {
+            saveCartBtn.addEventListener('click', function() {
+                fetch(`<?php echo URL_ROOT; ?>/carts/saveTemporary`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            });
+        }
+        
+        // Hàm cập nhật số lượng sản phẩm trong giỏ hàng hiển thị ở header
+        function updateCartCount(count) {
+            const cartCount = document.querySelector('.cart-count');
+            if(cartCount) {
+                cartCount.textContent = count;
+            }
+        }
+        
+        // Hàm format tiền tệ cho JavaScript
+        function jsFormatCurrency(value) {
+            return new Intl.NumberFormat('vi-VN', { 
+                style: 'currency', 
+                currency: 'VND',
+                maximumFractionDigits: 0 
+            }).format(value).replace('₫', 'đ');
+        }
+    });
+</script>
 
 <?php require APPROOT . '/views/includes/footer.php'; ?> 

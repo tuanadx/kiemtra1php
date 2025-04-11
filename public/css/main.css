@@ -576,6 +576,39 @@ header {
     transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
+.product-actions .add-to-cart {
+    background-color: #2a5a4c;
+    color: white;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.product-actions .add-to-cart:hover {
+    background-color: #3a7a6c;
+    transform: scale(1.05);
+}
+
+.product-actions .buy-now {
+    background-color: #e0c8a3;
+    color: #2a5a4c;
+    flex: 1;
+    margin-left: 10px;
+}
+
+.product-actions .buy-now:hover {
+    background-color: #d6b78f;
+    transform: scale(1.02);
+}
+
+/* Thêm hiệu ứng khi click */
+.product-actions button:active {
+    transform: scale(0.98);
+}
+
 /* Pagination Styles */
 .pagination {
     display: flex;

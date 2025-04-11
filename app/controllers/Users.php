@@ -155,7 +155,13 @@ class Users extends Controller {
                     $_SESSION['user_id'] = $loggedInUser->id;
                     $_SESSION['user_email'] = $loggedInUser->email;
                     $_SESSION['user_name'] = $loggedInUser->ho_ten;
-                    redirect('home');
+                    
+                    // Chuyển giỏ hàng từ session vào database
+                    if(isset($_SESSION['temp_cart']) && !empty($_SESSION['temp_cart'])) {
+                        redirect('carts/transferTempCart');
+                    } else {
+                        redirect('home');
+                    }
                 } else {
                     $data['mat_khau_err'] = 'Mật khẩu không chính xác';
                     $this->view('users/login', $data);

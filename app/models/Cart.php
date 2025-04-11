@@ -1,6 +1,12 @@
 <?php
 class Cart {
     private $db;
+    // Thuế VAT 10%
+    private $vat_rate = 0.1;
+    // Phí vận chuyển cơ bản
+    private $shipping_fee = 30000;
+    // Ngưỡng miễn phí vận chuyển
+    private $free_shipping_threshold = 300000;
 
     public function __construct() {
         $this->db = new Database;
@@ -184,5 +190,109 @@ class Cart {
         } else {
             return false;
         }
+    }
+    
+    // Tính thuế VAT
+    public function calculateVAT($cartId) {
+        $this->db->query('SELECT tong_tien FROM gio_hang WHERE id = :cart_id');
+        $this->db->bind(':cart_id', $cartId);
+        
+        $result = $this->db->single();
+        if ($result) {
+            $subtotal = $result->tong_tien;
+            return $subtotal * $this->vat_rate;
+        }
+        return 0;
+    }
+    
+    // Tính phí vận chuyển
+    public function calculateShippingFee($cartId) {
+        $this->db->query('SELECT tong_tien FROM gio_hang WHERE id = :cart_id');
+        $this->db->bind(':cart_id', $cartId);
+        
+        $result = $this->db->single();
+        if ($result) {
+            $subtotal = $result->tong_tien;
+            // Nếu tổng tiền vượt ngưỡng, miễn phí vận chuyển
+            if ($subtotal >= $this->free_shipping_threshold) {
+                return 0;
+            }
+            return $this->shipping_fee;
+        }
+        return $this->shipping_fee;
+    }
+    
+    // Tính tổng tiền đơn hàng bao gồm VAT và phí vận chuyển
+    public function calculateOrderTotal($cartId) {
+        $this->db->query('SELECT tong_tien FROM gio_hang WHERE id = :cart_id');
+        $this->db->bind(':cart_id', $cartId);
+        
+        $result = $this->db->single();
+        if ($result) {
+            $subtotal = $result->tong_tien;
+            $vat = $this->calculateVAT($cartId);
+            $shipping = $this->calculateShippingFee($cartId);
+            
+            return $subtotal + $vat + $shipping;
+        }
+        return 0;
+    }
+    
+    // Lưu giỏ hàng tạm thời khi người dùng thoát giữa chừng
+    public function saveTemporaryCart($userId, $cartId) {
+        // Create a temporary marker in the session instead of using the trang_thai column
+        $_SESSION['temp_cart_saved'] = $cartId;
+        return true;
+        
+        // Original code commented out until database is updated
+        /*
+        $this->db->query('UPDATE gio_hang SET trang_thai = "temporary" WHERE id = :cart_id AND id_khach_hang = :user_id');
+        $this->db->bind(':cart_id', $cartId);
+        $this->db->bind(':user_id', $userId);
+        
+        return $this->db->execute();
+        */
+    }
+    
+    // Khôi phục giỏ hàng tạm thời
+    public function restoreTemporaryCart($userId) {
+        // Use session-based marker instead of database column until database is updated
+        if (isset($_SESSION['temp_cart_saved'])) {
+            $cartId = $_SESSION['temp_cart_saved'];
+            unset($_SESSION['temp_cart_saved']);
+            return true;
+        }
+        
+        return false;
+        
+        // Original code commented out until database is updated
+        /*
+        $this->db->query('SELECT * FROM gio_hang WHERE id_khach_hang = :user_id AND trang_thai = "temporary" ORDER BY ngay_cap_nhat DESC LIMIT 1');
+        $this->db->bind(':user_id', $userId);
+        
+        $tempCart = $this->db->single();
+        if ($tempCart) {
+            $this->db->query('UPDATE gio_hang SET trang_thai = "active" WHERE id = :cart_id');
+            $this->db->bind(':cart_id', $tempCart->id);
+            
+            return $this->db->execute();
+        }
+        
+        return false;
+        */
+    }
+    
+    // Lấy số lượng tổng của các sản phẩm trong giỏ hàng
+    public function getTotalQuantity($cartId) {
+        $this->db->query('SELECT SUM(so_luong) as total_quantity FROM chi_tiet_gio_hang WHERE id_gio_hang = :cart_id');
+        $this->db->bind(':cart_id', $cartId);
+        
+        $result = $this->db->single();
+        return $result ? $result->total_quantity : 0;
+    }
+    
+    // Lấy ngưỡng miễn phí vận chuyển
+    public function getFreeShippingThreshold() {
+        return $this->free_shipping_threshold;
     }
 } 

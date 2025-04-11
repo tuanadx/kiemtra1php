@@ -122,4 +122,112 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Sort by:', this.textContent.trim());
         });
     });
+
+    // Add to Cart functionality
+    const addToCartButtons = document.querySelectorAll('.add-to-cart');
+    addToCartButtons.forEach(function(button) {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const bookId = this.dataset.bookId;
+            const quantity = 1; // Default quantity
+            
+            console.log('Thêm vào giỏ hàng - book ID:', bookId);
+            
+            if (!bookId) {
+                console.error('Không tìm thấy ID sách!');
+                alert('Có lỗi xảy ra: Không tìm thấy ID sách');
+                return;
+            }
+            
+            // Kiểm tra xem baseUrl có tồn tại không
+            const url = typeof baseUrl !== 'undefined' ? baseUrl + '/carts/add' : '/ktra2php/carts/add';
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('book_id', bookId);
+            formData.append('quantity', quantity);
+            
+            // Send AJAX request
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.success) {
+                    // Show success message
+                    alert(data.message);
+                    
+                    // Update cart count in header if it exists
+                    const cartCountElement = document.querySelector('.cart-count');
+                    if (cartCountElement && data.count) {
+                        cartCountElement.textContent = data.count;
+                    }
+                } else {
+                    // Show error message
+                    alert(data.message || 'Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng');
+            });
+        });
+    });
+
+    // Buy Now functionality
+    const buyNowButtons = document.querySelectorAll('.buy-now');
+    buyNowButtons.forEach(function(button) {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const bookId = this.dataset.bookId;
+            const quantity = 1; // Default quantity
+            
+            console.log('Mua ngay:', bookId, quantity);
+            
+            // Kiểm tra xem baseUrl có tồn tại không
+            const url = typeof baseUrl !== 'undefined' ? baseUrl + '/carts/buyNow' : '/ktra2php/carts/buyNow';
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('book_id', bookId);
+            formData.append('quantity', quantity);
+            
+            // Send AJAX request
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.success) {
+                    // Show success message
+                    alert(data.message);
+                    
+                    // Redirect to specified URL if provided
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    }
+                } else {
+                    // Show error message
+                    alert(data.message || 'Có lỗi xảy ra khi thực hiện chức năng mua ngay');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi thực hiện chức năng mua ngay');
+            });
+        });
+    });
 });

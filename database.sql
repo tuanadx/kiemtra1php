@@ -1,5 +1,3 @@
-
-
 --Tạo bảng sách
 CREATE TABLE sach (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -27,6 +25,8 @@ CREATE TABLE IF NOT EXISTS `gio_hang` (
     `id` INT PRIMARY KEY AUTO_INCREMENT,
     `id_khach_hang` INT NOT NULL,
     `tong_tien` DECIMAL(10,2) DEFAULT 0,
+    `trang_thai` ENUM('active', 'temporary', 'completed') DEFAULT 'active',
+    `ghi_chu` TEXT,
     `ngay_tao` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `ngay_cap_nhat` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`id_khach_hang`) REFERENCES `khach_hang`(`id`) ON DELETE CASCADE

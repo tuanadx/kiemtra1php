@@ -20,9 +20,9 @@
             <div class="book-info">
                 <h1 class="book-title"><?php echo $data['book']->ten_sach; ?></h1>
                 <p class="book-author">Tác giả: <span><?php echo $data['book']->tac_gia; ?></span></p>
-                <p class="book-publisher">Nhà xuất bản: <span><?php echo $data['book']->nha_xuat_ban; ?></span></p>
+                <!-- <p class="book-publisher">Nhà xuất bản: <span><?php echo $data['book']->nha_xuat_ban; ?></span></p>
                 <p class="book-country">Quốc gia: <span><?php echo $data['book']->quoc_gia; ?></span></p>
-                <p class="book-date">Ngày xuất bản: <span><?php echo date('d/m/Y', strtotime($data['book']->ngay_xuat_ban)); ?></span></p>
+                <p class="book-date">Ngày xuất bản: <span><?php echo date('d/m/Y', strtotime($data['book']->ngay_xuat_ban)); ?></span></p> -->
                 <div class="book-price">
                     <span class="price"><?php echo formatCurrency($data['book']->gia_tien); ?></span>
                 </div>
@@ -33,12 +33,12 @@
             </div>
         </div>
         
-        <div class="book-description">
+        <!-- <div class="book-description">
             <h2>Mô tả sách</h2>
             <div class="description-content">
                 <?php echo $data['book']->mo_ta; ?>
             </div>
-        </div>
+        </div> -->
     </div>
 </section>
 
