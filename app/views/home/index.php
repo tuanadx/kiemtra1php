@@ -1,4 +1,6 @@
 <?php require_once APPROOT . '/views/includes/header.php'; ?>
+<!-- SweetAlert2 CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 
 <!-- Breadcrumb -->
 <div class="breadcrumb">
@@ -130,5 +132,8 @@
         </div>
     </div>
 </main>
+
+<!-- SweetAlert2 JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
 <?php require_once APPROOT . '/views/includes/footer.php'; ?> 

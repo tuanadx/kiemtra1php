@@ -136,23 +136,40 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (!bookId) {
                 console.error('Không tìm thấy ID sách!');
-                alert('Có lỗi xảy ra: Không tìm thấy ID sách');
+                Swal.fire({
+                    title: 'Có lỗi xảy ra!',
+                    text: 'Không tìm thấy ID sách',
+                    icon: 'error',
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#2a5a4c'
+                });
                 return;
             }
+            
+            // Hiển thị loading
+            Swal.fire({
+                title: 'Đang xử lý...',
+                text: 'Vui lòng đợi trong giây lát',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
             
             // Kiểm tra xem baseUrl có tồn tại không
             const url = typeof baseUrl !== 'undefined' ? baseUrl + '/carts/add' : '/ktra2php/carts/add';
             
-            // Create form data
-            const formData = new FormData();
-            formData.append('book_id', bookId);
-            formData.append('quantity', quantity);
+            // Lấy tên sách
+            const productItem = this.closest('.product-item');
+            const bookTitle = productItem ? productItem.querySelector('.product-info h3 a').textContent : 'sản phẩm';
             
             // Send AJAX request
             fetch(url, {
                 method: 'POST',
-                body: formData,
-                credentials: 'same-origin'
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `book_id=${bookId}&quantity=${quantity}`
             })
             .then(response => {
                 console.log('Response status:', response.status);
@@ -161,22 +178,48 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 console.log('Response data:', data);
                 if (data.success) {
-                    // Show success message
-                    alert(data.message);
-                    
                     // Update cart count in header if it exists
                     const cartCountElement = document.querySelector('.cart-count');
-                    if (cartCountElement && data.count) {
-                        cartCountElement.textContent = data.count;
+                    if (cartCountElement && data.cart_count) {
+                        cartCountElement.textContent = data.cart_count;
                     }
+                    
+                    // Hiển thị thông báo thành công
+                    Swal.fire({
+                        title: 'Thêm vào giỏ hàng thành công!',
+                        text: `Đã thêm "${bookTitle}" vào giỏ hàng`,
+                        icon: 'success',
+                        confirmButtonText: 'Xem giỏ hàng',
+                        showCancelButton: true,
+                        cancelButtonText: 'Tiếp tục mua sắm',
+                        confirmButtonColor: '#2a5a4c',
+                        cancelButtonColor: '#6c757d'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = `${baseUrl}/carts`;
+                        }
+                    });
                 } else {
-                    // Show error message
-                    alert(data.message || 'Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng');
+                    // Hiển thị thông báo lỗi
+                    Swal.fire({
+                        title: 'Có lỗi xảy ra!',
+                        text: data.message || 'Không thể thêm sản phẩm vào giỏ hàng',
+                        icon: 'error',
+                        confirmButtonText: 'Đóng',
+                        confirmButtonColor: '#2a5a4c'
+                    });
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng');
+                // Hiển thị thông báo lỗi
+                Swal.fire({
+                    title: 'Có lỗi xảy ra!',
+                    text: 'Không thể kết nối đến máy chủ',
+                    icon: 'error',
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#2a5a4c'
+                });
             });
         });
     });
@@ -192,41 +235,65 @@ document.addEventListener('DOMContentLoaded', function() {
             
             console.log('Mua ngay:', bookId, quantity);
             
+            if (!bookId) {
+                console.error('Không tìm thấy ID sách!');
+                Swal.fire({
+                    title: 'Có lỗi xảy ra!',
+                    text: 'Không tìm thấy ID sách',
+                    icon: 'error',
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#2a5a4c'
+                });
+                return;
+            }
+            
+            // Hiển thị loading
+            Swal.fire({
+                title: 'Đang xử lý...',
+                text: 'Vui lòng đợi trong giây lát',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
             // Kiểm tra xem baseUrl có tồn tại không
-            const url = typeof baseUrl !== 'undefined' ? baseUrl + '/carts/buyNow' : '/ktra2php/carts/buyNow';
+            const url = typeof baseUrl !== 'undefined' ? baseUrl + '/carts/add' : '/ktra2php/carts/add';
             
-            // Create form data
-            const formData = new FormData();
-            formData.append('book_id', bookId);
-            formData.append('quantity', quantity);
-            
-            // Send AJAX request
+            // Send AJAX request để thêm vào giỏ hàng rồi chuyển đến trang thanh toán
             fetch(url, {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `book_id=${bookId}&quantity=${quantity}&buy_now=1`
             })
-            .then(response => {
-                console.log('Response status:', response.status);
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                console.log('Response data:', data);
                 if (data.success) {
-                    // Show success message
-                    alert(data.message);
-                    
-                    // Redirect to specified URL if provided
-                    if (data.redirect) {
-                        window.location.href = data.redirect;
-                    }
+                    // Chuyển đến trang thanh toán
+                    window.location.href = `${baseUrl}/carts/checkout`;
                 } else {
-                    // Show error message
-                    alert(data.message || 'Có lỗi xảy ra khi thực hiện chức năng mua ngay');
+                    // Hiển thị thông báo lỗi
+                    Swal.fire({
+                        title: 'Có lỗi xảy ra!',
+                        text: data.message || 'Không thể tiến hành mua ngay',
+                        icon: 'error',
+                        confirmButtonText: 'Đóng',
+                        confirmButtonColor: '#2a5a4c'
+                    });
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Có lỗi xảy ra khi thực hiện chức năng mua ngay');
+                // Hiển thị thông báo lỗi
+                Swal.fire({
+                    title: 'Có lỗi xảy ra!',
+                    text: 'Không thể kết nối đến máy chủ',
+                    icon: 'error',
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#2a5a4c'
+                });
             });
         });
     });
