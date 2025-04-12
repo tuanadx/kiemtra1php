@@ -17,41 +17,90 @@ class Carts extends Controller {
 
     // Phương thức hiển thị giỏ hàng
     public function index() {
+        // Khởi tạo biến data
+        $data = [
+            'title' => 'Giỏ hàng',
+            'cartItems' => [],
+            'vat' => 0,
+            'shipping' => 0,
+            'orderTotal' => 0,
+            'free_shipping_threshold' => $this->cartModel->getFreeShippingThreshold(),
+            'is_logged_in' => isset($_SESSION['user_id'])
+        ];
+
         // Kiểm tra đăng nhập
-        if(!isset($_SESSION['user_id'])) {
-            redirect('users/login');
-        }
-
-        // Lấy giỏ hàng của người dùng
-        $cart = $this->cartModel->getCartByUserId($_SESSION['user_id']);
-        
-        if($cart) {
-            // Lấy sản phẩm trong giỏ hàng
-            $cartItems = $this->cartModel->getCartItems($cart->id);
+        if(isset($_SESSION['user_id'])) {
+            // Đã đăng nhập - lấy giỏ hàng từ cơ sở dữ liệu
+            $cart = $this->cartModel->getCartByUserId($_SESSION['user_id']);
             
-            // Tính toán thuế, phí vận chuyển và tổng đơn hàng
-            $vat = $this->cartModel->calculateVAT($cart->id);
-            $shipping = $this->cartModel->calculateShippingFee($cart->id);
-            $orderTotal = $this->cartModel->calculateOrderTotal($cart->id);
-            
-            // Lưu số lượng sản phẩm trong giỏ hàng vào session
-            $totalQuantity = $this->cartModel->getTotalQuantity($cart->id);
-            $_SESSION['cart_count'] = $totalQuantity;
-            
-            $data = [
-                'title' => 'Giỏ hàng',
-                'cart' => $cart,
-                'cartItems' => $cartItems,
-                'vat' => $vat,
-                'shipping' => $shipping,
-                'orderTotal' => $orderTotal,
-                'free_shipping_threshold' => $this->cartModel->getFreeShippingThreshold()
-            ];
-
-            $this->view('carts/index', $data);
+            if($cart) {
+                // Lấy sản phẩm trong giỏ hàng
+                $cartItems = $this->cartModel->getCartItems($cart->id);
+                
+                // Tính toán thuế, phí vận chuyển và tổng đơn hàng
+                $vat = $this->cartModel->calculateVAT($cart->id);
+                $shipping = $this->cartModel->calculateShippingFee($cart->id);
+                $orderTotal = $this->cartModel->calculateOrderTotal($cart->id);
+                
+                // Lưu số lượng sản phẩm trong giỏ hàng vào session
+                $totalQuantity = $this->cartModel->getTotalQuantity($cart->id);
+                $_SESSION['cart_count'] = $totalQuantity;
+                
+                $data['cart'] = $cart;
+                $data['cartItems'] = $cartItems;
+                $data['vat'] = $vat;
+                $data['shipping'] = $shipping;
+                $data['orderTotal'] = $orderTotal;
+            }
         } else {
-            redirect('home');
+            // Chưa đăng nhập - lấy giỏ hàng từ session
+            if(isset($_SESSION['temp_cart']) && !empty($_SESSION['temp_cart'])) {
+                $cartItems = [];
+                $subTotal = 0;
+                
+                // Tính tổng tiền từ các sản phẩm
+                foreach($_SESSION['temp_cart'] as $index => $item) {
+                    // Lấy thông tin sách mới nhất từ cơ sở dữ liệu
+                    $book = $this->bookModel->getBookById($item['book_id']);
+                    if($book) {
+                        // Cập nhật giá mới nhất
+                        $price = $book->gia_tien;
+                        $total = $price * $item['quantity'];
+                        
+                        $cartItem = (object)[
+                            'temp_id' => $index, // ID tạm thời để xác định khi xóa
+                            'book_id' => $book->id,
+                            'ten_sach' => $book->ten_sach,
+                            'tac_gia' => $book->tac_gia,
+                            'anh' => $book->anh,
+                            'gia_tien' => $price,
+                            'so_luong' => $item['quantity'],
+                            'thanh_tien' => $total
+                        ];
+                        
+                        $cartItems[] = $cartItem;
+                        $subTotal += $total;
+                    }
+                }
+                
+                // Tính thuế VAT (10%)
+                $vat = $subTotal * 0.1;
+                
+                // Tính phí vận chuyển (30,000 VND nếu dưới 300,000 VND)
+                $shipping = ($subTotal < 300000) ? 30000 : 0;
+                
+                // Tính tổng tiền đơn hàng
+                $orderTotal = $subTotal + $vat + $shipping;
+                
+                $data['cartItems'] = $cartItems;
+                $data['vat'] = $vat;
+                $data['shipping'] = $shipping;
+                $data['orderTotal'] = $orderTotal;
+                $data['subTotal'] = $subTotal;
+            }
         }
+
+        $this->view('carts/index', $data);
     }
 
     // Phương thức thêm sản phẩm vào giỏ hàng
@@ -285,29 +334,23 @@ class Carts extends Controller {
 
     // Phương thức xóa toàn bộ giỏ hàng
     public function clear() {
-        // Kiểm tra đăng nhập
         if(isset($_SESSION['user_id'])) {
-            // Đã đăng nhập - xóa toàn bộ giỏ hàng trong cơ sở dữ liệu
+            // Đã đăng nhập - xóa giỏ hàng trong cơ sở dữ liệu
             $cart = $this->cartModel->getCartByUserId($_SESSION['user_id']);
             
-            // Xóa toàn bộ giỏ hàng
-            if($this->cartModel->clearCart($cart->id)) {
-                // Cập nhật số lượng sản phẩm trong giỏ hàng vào session
+            if($cart && $this->cartModel->clearCart($cart->id)) {
                 $_SESSION['cart_count'] = 0;
-                
-                // Set flash message
-                // flash('cart_message', 'Đã xóa toàn bộ giỏ hàng');
+                redirect('carts');
+            } else {
+                redirect('home');
             }
         } else {
-            // Chưa đăng nhập - xóa toàn bộ giỏ hàng trong session
-            if(isset($_SESSION['temp_cart'])) {
-                $_SESSION['temp_cart'] = [];
-                $_SESSION['temp_cart_total'] = 0;
-                $_SESSION['cart_count'] = 0;
-            }
+            // Chưa đăng nhập - xóa giỏ hàng trong session
+            unset($_SESSION['temp_cart']);
+            unset($_SESSION['temp_cart_total']);
+            $_SESSION['cart_count'] = 0;
+            redirect('carts');
         }
-        
-        redirect('carts');
     }
 
     // Phương thức mua ngay
@@ -483,5 +526,132 @@ class Carts extends Controller {
         header('Content-Type: application/json');
         echo json_encode($data);
         exit;
+    }
+
+    // Phương thức cập nhật giỏ hàng tạm thời
+    public function updateTemp() {
+        if($_SERVER['REQUEST_METHOD'] == 'POST') {
+            // Xử lý dữ liệu
+            $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_STRING);
+            
+            $tempId = isset($_POST['temp_id']) ? (int)$_POST['temp_id'] : -1;
+            $bookId = isset($_POST['book_id']) ? (int)$_POST['book_id'] : 0;
+            $quantity = isset($_POST['quantity']) ? (int)$_POST['quantity'] : 1;
+            
+            if($quantity <= 0) {
+                $quantity = 1;
+            }
+            
+            if($tempId < 0 || !isset($_SESSION['temp_cart']) || !isset($_SESSION['temp_cart'][$tempId])) {
+                $this->jsonResponse(['success' => false, 'message' => 'Sản phẩm không tồn tại trong giỏ hàng']);
+                return;
+            }
+            
+            // Lấy thông tin sách để đảm bảo giá mới nhất
+            $book = $this->bookModel->getBookById($bookId);
+            if(!$book) {
+                $this->jsonResponse(['success' => false, 'message' => 'Sản phẩm không tồn tại']);
+                return;
+            }
+            
+            // Cập nhật số lượng
+            $_SESSION['temp_cart'][$tempId]['quantity'] = $quantity;
+            $_SESSION['temp_cart'][$tempId]['total'] = $quantity * $book->gia_tien;
+            
+            // Tính lại tổng tiền
+            $subTotal = 0;
+            foreach($_SESSION['temp_cart'] as $item) {
+                $subTotal += $item['total'];
+            }
+            
+            // Tính VAT và phí vận chuyển
+            $vat = $subTotal * 0.1; // 10% VAT
+            $shipping = ($subTotal < 300000) ? 30000 : 0; // Miễn phí vận chuyển nếu mua trên 300k
+            $orderTotal = $subTotal + $vat + $shipping;
+            
+            // Lấy số lượng sản phẩm trong giỏ hàng
+            $cartCount = count($_SESSION['temp_cart']);
+            $_SESSION['cart_count'] = $cartCount;
+            
+            $this->jsonResponse([
+                'success' => true, 
+                'message' => 'Đã cập nhật giỏ hàng', 
+                'item_total' => $_SESSION['temp_cart'][$tempId]['total'],
+                'subTotal' => $subTotal,
+                'vat' => $vat,
+                'shipping' => $shipping,
+                'orderTotal' => $orderTotal,
+                'cart_count' => $cartCount,
+                'free_shipping_threshold' => 300000 // Ngưỡng miễn phí vận chuyển
+            ]);
+        } else {
+            redirect('home');
+        }
+    }
+    
+    // Phương thức xóa sản phẩm khỏi giỏ hàng tạm thời
+    public function removeTemp() {
+        if($_SERVER['REQUEST_METHOD'] == 'POST') {
+            // Xử lý dữ liệu
+            $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_STRING);
+            
+            $tempId = isset($_POST['temp_id']) ? (int)$_POST['temp_id'] : -1;
+            
+            if($tempId < 0 || !isset($_SESSION['temp_cart']) || !isset($_SESSION['temp_cart'][$tempId])) {
+                $this->jsonResponse(['success' => false, 'message' => 'Sản phẩm không tồn tại trong giỏ hàng']);
+                return;
+            }
+            
+            // Xóa sản phẩm
+            unset($_SESSION['temp_cart'][$tempId]);
+            
+            // Đánh lại index cho mảng
+            $_SESSION['temp_cart'] = array_values($_SESSION['temp_cart']);
+            
+            // Kiểm tra giỏ hàng còn sản phẩm không
+            $isEmpty = empty($_SESSION['temp_cart']);
+            
+            if($isEmpty) {
+                unset($_SESSION['temp_cart']);
+                unset($_SESSION['temp_cart_total']);
+                $_SESSION['cart_count'] = 0;
+                
+                $this->jsonResponse([
+                    'success' => true, 
+                    'message' => 'Đã xóa sản phẩm khỏi giỏ hàng',
+                    'is_empty' => true
+                ]);
+                return;
+            }
+            
+            // Tính lại tổng tiền
+            $subTotal = 0;
+            foreach($_SESSION['temp_cart'] as $item) {
+                $subTotal += $item['total'];
+            }
+            
+            // Tính VAT và phí vận chuyển
+            $vat = $subTotal * 0.1; // 10% VAT
+            $shipping = ($subTotal < 300000) ? 30000 : 0; // Miễn phí vận chuyển nếu mua trên 300k
+            $orderTotal = $subTotal + $vat + $shipping;
+            
+            // Lấy số lượng sản phẩm trong giỏ hàng
+            $cartCount = count($_SESSION['temp_cart']);
+            $_SESSION['cart_count'] = $cartCount;
+            
+            $this->jsonResponse([
+                'success' => true, 
+                'message' => 'Đã xóa sản phẩm khỏi giỏ hàng', 
+                'is_empty' => false,
+                'subTotal' => $subTotal,
+                'vat' => $vat,
+                'shipping' => $shipping,
+                'orderTotal' => $orderTotal,
+                'cart_count' => $cartCount,
+                'free_shipping_threshold' => 300000 // Ngưỡng miễn phí vận chuyển
+            ]);
+        } else {
+            redirect('home');
+        }
     }
 }

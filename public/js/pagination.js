@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', function() {
     // Lấy các liên kết phân trang
     const setupPagination = () => {

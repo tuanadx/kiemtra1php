@@ -1,3 +1,4 @@
+
 // Tab switching functionality
 document.addEventListener('DOMContentLoaded', function() {
     const tabHeaders = document.querySelectorAll('.tab-header');
