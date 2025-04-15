@@ -81,6 +81,7 @@ class Carts extends Controller {
                         $cartItems[] = $cartItem;
                         $subTotal += $total;
                     }
+                
                 }
                 
                 // Tính thuế VAT (10%)
@@ -136,19 +137,40 @@ class Carts extends Controller {
                 // Đã đăng nhập - thêm vào giỏ hàng trong cơ sở dữ liệu
                 $cart = $this->cartModel->getCartByUserId($_SESSION['user_id']);
                 
-                // Thêm sản phẩm vào giỏ hàng
-                if($this->cartModel->addItem($cart->id, $book->id, $quantity, $book->gia_tien)) {
-                    // Lấy số lượng sản phẩm trong giỏ hàng
-                    $totalQuantity = $this->cartModel->getTotalQuantity($cart->id);
-                    $_SESSION['cart_count'] = $totalQuantity;
-                    
-                    $this->jsonResponse([
-                        'success' => true, 
-                        'message' => 'Đã thêm sản phẩm vào giỏ hàng', 
-                        'count' => $totalQuantity
-                    ]);
+                // Kiểm tra xem sản phẩm đã tồn tại trong giỏ hàng chưa
+                $existingItem = $this->cartModel->getCartItemByBookId($cart->id, $book->id);
+                
+                if($existingItem) {
+                    // Nếu sản phẩm đã tồn tại, cập nhật số lượng
+                    $newQuantity = $existingItem->so_luong + $quantity;
+                    if($this->cartModel->updateQuantity($existingItem->id, $newQuantity)) {
+                        // Lấy số lượng sản phẩm trong giỏ hàng
+                        $totalQuantity = $this->cartModel->getTotalQuantity($cart->id);
+                        $_SESSION['cart_count'] = $totalQuantity;
+                        
+                        $this->jsonResponse([
+                            'success' => true, 
+                            'message' => 'Đã cập nhật số lượng sản phẩm trong giỏ hàng', 
+                            'count' => $totalQuantity
+                        ]);
+                    } else {
+                        $this->jsonResponse(['success' => false, 'message' => 'Không thể cập nhật số lượng sản phẩm']);
+                    }
                 } else {
-                    $this->jsonResponse(['success' => false, 'message' => 'Không thể thêm sản phẩm vào giỏ hàng']);
+                    // Nếu sản phẩm chưa tồn tại, thêm mới
+                    if($this->cartModel->addItem($cart->id, $book->id, $quantity, $book->gia_tien)) {
+                        // Lấy số lượng sản phẩm trong giỏ hàng
+                        $totalQuantity = $this->cartModel->getTotalQuantity($cart->id);
+                        $_SESSION['cart_count'] = $totalQuantity;
+                        
+                        $this->jsonResponse([
+                            'success' => true, 
+                            'message' => 'Đã thêm sản phẩm vào giỏ hàng', 
+                            'count' => $totalQuantity
+                        ]);
+                    } else {
+                        $this->jsonResponse(['success' => false, 'message' => 'Không thể thêm sản phẩm vào giỏ hàng']);
+                    }
                 }
             } else {
                 // Chưa đăng nhập - sử dụng Session để lưu giỏ hàng
@@ -157,19 +179,28 @@ class Carts extends Controller {
                     $_SESSION['temp_cart_total'] = 0;
                 }
                 
+                // Log để debug
+                error_log('Temp cart before: ' . json_encode($_SESSION['temp_cart']));
+                error_log('Adding book: ' . json_encode($book));
+                
                 // Kiểm tra sản phẩm đã tồn tại trong giỏ hàng chưa
                 $found = false;
-                foreach($_SESSION['temp_cart'] as &$item) {
+                $index = -1;
+                
+                foreach($_SESSION['temp_cart'] as $key => $item) {
                     if($item['book_id'] == $book->id) {
-                        $item['quantity'] += $quantity;
-                        $item['total'] = $item['quantity'] * $item['price'];
                         $found = true;
+                        $index = $key;
                         break;
                     }
                 }
                 
-                // Nếu chưa tồn tại, thêm mới
-                if(!$found) {
+                if($found) {
+                    // Nếu sản phẩm đã tồn tại, cập nhật số lượng
+                    $_SESSION['temp_cart'][$index]['quantity'] += $quantity;
+                    $_SESSION['temp_cart'][$index]['total'] = $_SESSION['temp_cart'][$index]['quantity'] * $book->gia_tien;
+                } else {
+                    // Nếu chưa tồn tại, thêm mới
                     $_SESSION['temp_cart'][] = [
                         'book_id' => $book->id,
                         'name' => $book->ten_sach,
@@ -180,11 +211,15 @@ class Carts extends Controller {
                     ];
                 }
                 
+                // Log để debug
+                error_log('Temp cart after: ' . json_encode($_SESSION['temp_cart']));
+                
                 // Tính lại tổng tiền
-                $_SESSION['temp_cart_total'] = 0;
+                $subTotal = 0;
                 foreach($_SESSION['temp_cart'] as $item) {
-                    $_SESSION['temp_cart_total'] += $item['total'];
+                    $subTotal += $item['total'];
                 }
+                $_SESSION['temp_cart_total'] = $subTotal;
                 
                 // Lấy số lượng sản phẩm trong giỏ hàng
                 $count = count($_SESSION['temp_cart']);
@@ -463,10 +498,38 @@ class Carts extends Controller {
     public function debug() {
         echo "<h1>Debug Cart</h1>";
         
-        // Kiểm tra xem có sách trong CSDL không
-        $books = $this->bookModel->getBooks(10);
+        // Hiển thị trạng thái đăng nhập
+        echo "<h2>Trạng thái đăng nhập:</h2>";
+        echo isset($_SESSION['user_id']) ? "Đã đăng nhập (ID: {$_SESSION['user_id']})" : "Chưa đăng nhập";
         
-        echo "<h2>Sách trong CSDL:</h2>";
+        // Kiểm tra giỏ hàng hiện tại
+        echo "<h2>Giỏ hàng hiện tại:</h2>";
+        if(isset($_SESSION['user_id'])) {
+            $cart = $this->cartModel->getCartByUserId($_SESSION['user_id']);
+            if($cart) {
+                $cartItems = $this->cartModel->getCartItems($cart->id);
+                echo "<h3>Giỏ hàng trong Database:</h3>";
+                echo "<pre>";
+                print_r($cartItems);
+                echo "</pre>";
+            } else {
+                echo "<p>Chưa có giỏ hàng trong database</p>";
+            }
+        } else {
+            echo "<h3>Giỏ hàng tạm thời (Session):</h3>";
+            if(isset($_SESSION['temp_cart'])) {
+                echo "<pre>";
+                print_r($_SESSION['temp_cart']);
+                echo "</pre>";
+            } else {
+                echo "<p>Chưa có giỏ hàng tạm thời</p>";
+            }
+        }
+        
+        // Kiểm tra xem có sách trong CSDL không
+        $books = $this->bookModel->getBooks(5); // Lấy 5 cuốn sách để test
+        
+        echo "<h2>Sách có sẵn để test:</h2>";
         if (count($books) > 0) {
             echo "<ul>";
             foreach($books as $book) {
@@ -474,48 +537,87 @@ class Carts extends Controller {
             }
             echo "</ul>";
             
-            echo "<h2>Thử thêm sách vào giỏ hàng</h2>";
-            $firstBook = $books[0];
-            
-            echo "<form method='post' action='" . URL_ROOT . "/carts/add'>";
-            echo "<input type='hidden' name='book_id' value='{$firstBook->id}'>";
-            echo "<input type='hidden' name='quantity' value='1'>";
-            echo "<button type='submit'>Thêm sách '{$firstBook->ten_sach}' vào giỏ hàng</button>";
-            echo "</form>";
-            
-            echo "<h2>Kiểm tra JavaScript</h2>";
-            echo "<button class='debug-add-cart' data-book-id='{$firstBook->id}'>Thêm sách '{$firstBook->ten_sach}' bằng JavaScript</button>";
+            echo "<h2>Test thêm sách vào giỏ hàng:</h2>";
+            foreach($books as $book) {
+                echo "<div style='margin-bottom: 10px;'>";
+                echo "<h3>{$book->ten_sach}</h3>";
+                echo "<button class='debug-add-cart' data-book-id='{$book->id}' style='margin-right: 10px;'>Thêm vào giỏ hàng</button>";
+                echo "<button class='debug-buy-now' data-book-id='{$book->id}'>Mua ngay</button>";
+                echo "</div>";
+            }
             
             echo "<script>
-                document.querySelector('.debug-add-cart').addEventListener('click', function() {
-                    const bookId = this.dataset.bookId;
-                    const formData = new FormData();
-                    formData.append('book_id', bookId);
-                    formData.append('quantity', 1);
-                    
-                    console.log('Debug: sending request to add book', bookId);
-                    
-                    fetch('" . URL_ROOT . "/carts/add', {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('Response:', data);
-                        alert(data.message || 'Response received');
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Có lỗi xảy ra: ' + error);
+                // Hàm hiển thị kết quả debug
+                function showDebugResult(data) {
+                    console.log('Response:', data);
+                    const debugResult = document.getElementById('debug-result');
+                    debugResult.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                }
+                
+                // Xử lý thêm vào giỏ hàng
+                document.querySelectorAll('.debug-add-cart').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const bookId = this.dataset.bookId;
+                        const formData = new FormData();
+                        formData.append('book_id', bookId);
+                        formData.append('quantity', 1);
+                        
+                        console.log('Debug: sending request to add book', bookId);
+                        
+                        fetch('" . URL_ROOT . "/carts/add', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            showDebugResult(data);
+                            setTimeout(() => window.location.reload(), 2000);
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Có lỗi xảy ra: ' + error);
+                        });
+                    });
+                });
+                
+                // Xử lý mua ngay
+                document.querySelectorAll('.debug-buy-now').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const bookId = this.dataset.bookId;
+                        const formData = new FormData();
+                        formData.append('book_id', bookId);
+                        formData.append('quantity', 1);
+                        
+                        console.log('Debug: sending request to buy now', bookId);
+                        
+                        fetch('" . URL_ROOT . "/carts/buyNow', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            showDebugResult(data);
+                            if(data.redirect) {
+                                setTimeout(() => window.location.href = data.redirect, 2000);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Có lỗi xảy ra: ' + error);
+                        });
                     });
                 });
             </script>";
+            
+            // Div để hiển thị kết quả debug
+            echo "<h2>Kết quả thao tác:</h2>";
+            echo "<div id='debug-result' style='background: #f5f5f5; padding: 10px; margin-top: 10px;'></div>";
         } else {
             echo "<p>Không có sách nào trong CSDL. Vui lòng thêm sách trước.</p>";
         }
         
-        // Kiểm tra biến session
-        echo "<h2>Session hiện tại:</h2>";
+        // Hiển thị toàn bộ session để debug
+        echo "<h2>Toàn bộ Session:</h2>";
         echo "<pre>";
         print_r($_SESSION);
         echo "</pre>";

@@ -295,4 +295,13 @@ class Cart {
     public function getFreeShippingThreshold() {
         return $this->free_shipping_threshold;
     }
+    
+    // Lấy chi tiết giỏ hàng theo id sách
+    public function getCartItemByBookId($cartId, $bookId) {
+        $this->db->query('SELECT * FROM chi_tiet_gio_hang WHERE id_gio_hang = :cart_id AND id_sach = :book_id');
+        $this->db->bind(':cart_id', $cartId);
+        $this->db->bind(':book_id', $bookId);
+        
+        return $this->db->single();
+    }
 } 
