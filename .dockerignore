@@ -1,0 +1,9 @@
+.git
+.github
+.gitignore
+README.md
+deploy-guide.md
+.htaccess.railway
+nixpacks.toml
+railway-build.sh
+composer.lock 
