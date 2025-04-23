@@ -1,4 +1,3 @@
-
 <?php require_once APPROOT . '/views/includes/header.php'; ?>
 <!-- SweetAlert2 CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
@@ -119,7 +118,14 @@
                         <a href="#" class="prev disabled"><i class="fas fa-chevron-left"></i></a>
                     <?php endif; ?>
 
-                    <?php for($i = 1; $i <= $data['totalPages']; $i++): ?>
+                    <?php 
+                    // Tính toán phạm vi trang hiển thị
+                    $startPage = max(1, $data['currentPage'] - 2);
+                    $endPage = min($data['totalPages'], $data['currentPage'] + 2);
+                    
+                    // Hiển thị các trang trong phạm vi
+                    for($i = $startPage; $i <= $endPage; $i++): 
+                    ?>
                         <a href="<?php echo URL_ROOT; ?>/home/page/<?php echo $i; ?>" class="<?php echo $i == $data['currentPage'] ? 'active' : ''; ?>"><?php echo $i; ?></a>
                     <?php endfor; ?>
 
