@@ -6,11 +6,17 @@ RUN docker-php-ext-install pdo pdo_mysql
 # Thiết lập thư mục làm việc
 WORKDIR /app
 
+# Tạo thư mục vendor trống (để tránh Railway cố gắng chạy composer)
+RUN mkdir -p /app/vendor
+
 # Sao chép mã nguồn vào container
 COPY . .
 
 # Thiết lập quyền thực thi cho script
 RUN chmod +x start.sh
+
+# Giả lập composer install để Railway không cố gắng chạy nó
+RUN touch composer.json && echo '{"require":{}}' > composer.json && echo "Skipping composer install"
 
 # Mở cổng
 EXPOSE 8080
