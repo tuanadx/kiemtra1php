@@ -1,0 +1,21 @@
+# Thư mục vendor
+/vendor/
+
+# Thư mục các file tải lên
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# File môi trường
+.env
+
+# Cache và logs
+/logs/*
+!/logs/.gitkeep
+/cache/*
+!/cache/.gitkeep
+
+# IDE và hệ thống OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

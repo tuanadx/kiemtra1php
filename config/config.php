@@ -1,23 +1,32 @@
 <?php
-// Cấu hình cơ sở dữ liệu
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') ?: '');
-define('DB_NAME', getenv('DB_NAME') ?: 'cuahangsach');
+// Lấy thông tin kết nối từ Railway hoặc sử dụng local
+$dbUrl = getenv('DATABASE_URL');
 
-// Cấu hình URL - Sử dụng URL từ Railway nếu có
-$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
-$url_root = getenv('RAILWAY_STATIC_URL') ?: $protocol . $_SERVER['HTTP_HOST'];
+if ($dbUrl) {
+    // Trên Railway
+    $dbInfo = parse_url($dbUrl);
+    define('DB_HOST', $dbInfo['host']);
+    define('DB_USER', $dbInfo['user']);
+    define('DB_PASS', $dbInfo['pass']);
+    define('DB_NAME', ltrim($dbInfo['path'], '/'));
+} else {
+    // Local
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
+    define('DB_NAME', 'cuahangsach');
+}
 
 // Cấu hình URL
-define('BASE_URL', $url_root);
-define('SITE_NAME', getenv('SITE_NAME') ?: 'Nhã Nam');
+$appUrl = getenv('RAILWAY_STATIC_URL') ?: 'http://localhost/ktra2php';
+define('BASE_URL', $appUrl);
+define('SITE_NAME', 'Nhã Nam');
 
 // Thư mục
 define('APP_ROOT', dirname(dirname(__FILE__)) . '/app');
 define('APPROOT', dirname(dirname(__FILE__)) . '/app');
-define('URL_ROOT', $url_root);
+define('URL_ROOT', $appUrl);
 define('URL_SUBFOLDER', '');
 
 // Cấu hình debug
-define('DEBUG', getenv('APP_ENV') === 'development'); 
+define('DEBUG', getenv('DEBUG') ?: true); 
