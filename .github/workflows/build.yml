@@ -1,0 +1,22 @@
+name: Make scripts executable
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Make scripts executable
+      run: |
+        chmod +x railway-build.sh
+        chmod +x start.sh
+    - name: Commit changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .
+        git commit -m "Make scripts executable" || echo "No changes to commit"
+        git push 
