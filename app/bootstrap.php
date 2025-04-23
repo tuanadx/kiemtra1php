@@ -1,13 +1,15 @@
 <?php
 // Load Config
-require_once '../config/config.php';
+$appRoot = dirname(__DIR__);
+require_once $appRoot . '/config/config.php';
 
 // Load Helper
-require_once 'core/Helper.php';
+require_once $appRoot . '/app/core/Helper.php';
 
 // Autoload Core Libraries
 spl_autoload_register(function($className) {
-    require_once 'core/' . $className . '.php';
+    $appRoot = dirname(__DIR__);
+    require_once $appRoot . '/app/core/' . $className . '.php';
 });
 
 // Start Session
