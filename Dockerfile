@@ -15,11 +15,8 @@ COPY . .
 # Thiết lập quyền thực thi cho script
 RUN chmod +x start.sh
 
-# Giả lập composer install để Railway không cố gắng chạy nó
-RUN touch composer.json && echo '{"require":{}}' > composer.json && echo "Skipping composer install"
-
 # Mở cổng
 EXPOSE 8080
 
 # Chạy script khởi động
-CMD ["/app/start.sh"] 
+CMD ["./start.sh"]
