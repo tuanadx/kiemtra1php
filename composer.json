@@ -3,12 +3,17 @@
     "description": "Book Store Web Application",
     "type": "project",
     "require": {
-        "php": "^8.1"
+        "php": "^8.1",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*"
     },
     "require-dev": {},
     "scripts": {
         "post-install-cmd": [
             "echo 'No dependencies required'"
+        ],
+        "start": [
+            "php -S 0.0.0.0:8080"
         ]
     }
 } 
